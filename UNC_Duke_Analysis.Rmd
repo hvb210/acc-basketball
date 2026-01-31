@@ -18,14 +18,6 @@ str(unc_duke)
 ```
 
 ```{r}
-unc_duke <- unc_duke |>
-  mutate(
-    UNC_FT_pct = as.numeric(UNC_FT_pct),
-    Duke_FT_pct = as.numeric(Duke_FT_pct)
-  )
-```
-
-```{r}
 header_row <- unc_duke[1, ]
 ```
 
@@ -137,11 +129,22 @@ unc_duke <- unc_duke |>
 ```
 
 ```{r}
+unc_duke <- unc_duke |>
+  mutate(
+    UNC_FT_pct = as.numeric(UNC_FT_pct),
+    Duke_FT_pct = as.numeric(Duke_FT_pct),
+    UNC_3P_pct = as.numeric(UNC_3P_pct),
+    Duke_3P_pct = as.numeric(Duke_3P_pct)
+  )
+```
+
+```{r}
 # Filter for results with detailed statistics
 
 unc_duke_0405_2425 <- unc_duke |>
   filter(year(Date) > 2004)
 ```
+
 
 ## Data Visualization
 
@@ -157,8 +160,8 @@ unc_duke_0405_2425 <- unc_duke_0405_2425 |>
 ```{r}
 # Pivot table longer in preparation for making a time-series plot
 
-ft_pct_long <- unc_duke_0405_2425 %>%
-  select(Date, Venue, UNC_FT_pct, Duke_FT_pct) %>%
+ft_pct_long <- unc_duke_0405_2425 |>
+  select(Date, Venue, UNC_FT_pct, Duke_FT_pct) |>
   pivot_longer(cols = c(UNC_FT_pct, Duke_FT_pct),
                names_to = "Team",
                values_to = "FT_pct")
@@ -237,19 +240,84 @@ ggplot(ft_test_data, aes(x = home_away, y = FT_pct)) +
   )
 ```
 ```{r}
-# UNC t-test
+# t-test for significance in FT pct
 
 t.test(
   FT_pct ~ home_away,
   data = ft_test_data |> filter(Team == "UNC_FT_pct")
 )
-```
-```{r}
-# Duke t-test
 
 t.test(
   FT_pct ~ home_away,
   data = ft_test_data %>% filter(Team == "Duke_FT_pct")
 )
+
+# no statistically significant difference in FT% for each team per venue
+```
+## Thee-point Anlaysis
+
+```{r}
+ThreeP_pct_long <- unc_duke_0405_2425 |>
+  select(Date, Venue, UNC_3P_pct, Duke_3P_pct) |>
+  pivot_longer(cols = c(UNC_3P_pct, Duke_3P_pct),
+               names_to = "Team",
+               values_to = "Three_pct")
+```
+
+```{r}
+ThreeP_pct_long_noNeutral <- ThreeP_pct_long |>
+  filter(Venue %in% c("Smith Center", "Cameron Indoor"))
+```
+
+```{r}
+venue_trends3P <- ThreeP_pct_long_noNeutral |>
+  group_by(Venue, Team) |>
+  summarise(median_3P = median(Three_pct, na.rm = TRUE), .groups = "drop")
+```
+
+```{r}
+ggplot(ThreeP_pct_long_noNeutral, aes(x = Date, y = Three_pct, color = Venue)) +
+  geom_line(aes(group = interaction(Team, Venue)), alpha = 0.7, size = 0.5) +  # one line per Team x Venue
+  geom_point(alpha = 0.7, size = 1) +
+  scale_color_manual(values = c("Smith Center" = "#4B9CD3", "Cameron Indoor" = "#00539B")) + #using official hex colors for schools
+  scale_x_date(date_labels = "%Y", date_breaks = "2 years") + #clean up the x-axis by only using every other year
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + #rotate x-axis labels
+  facet_wrap(
+    ~Team,
+    labeller = labeller(Team = c( #rename the facets
+      "Duke_3P_pct" = "Duke",
+      "UNC_3P_pct" = "UNC")
+      )
+    )+
+  labs(
+    title = "UNC vs Duke Three Point % per Game",
+    x = "Date",
+    y = "Three Point %",
+    color = "Venue"
+  )
+```
+```{r}
+ThreeP_test_data <- ThreeP_pct_long_noNeutral |>
+  mutate(
+    home_away = case_when(
+      Team == "UNC_3P_pct"  & Venue == "Smith Center"   ~ "Home",
+      Team == "UNC_3P_pct"  & Venue == "Cameron Indoor" ~ "Away",
+      Team == "Duke_3P_pct" & Venue == "Cameron Indoor" ~ "Home",
+      Team == "Duke_3P_pct" & Venue == "Smith Center"   ~ "Away"
+    )
+  )
+
+t.test(
+  Three_pct ~ home_away,
+  data = ThreeP_test_data |> filter(Team == "UNC_3P_pct")
+)
+
+t.test(
+  Three_pct ~ home_away,
+  data = ThreeP_test_data %>% filter(Team == "Duke_3P_pct")
+)
+
+# no statistically significant difference in 3PT% for each team per venue
 ```
 
