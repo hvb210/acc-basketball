@@ -10,6 +10,8 @@ The goal is to explore how points are distributed among players and teams and to
 - **Class_Analysis.Rmd** – Additional visualizations and deeper insights based on upper- vs lower-classmen.   
 - **UNC_Duke_Analyis.Rmd** – Analysis for UNC vs Duke matchups, including time-series visualizations.
 - **Defense_Profiles.Rmd** - Analysis of opponent scoring, including visualization with team logos.
+- **one_seeds_analysis.Rmd** - 3PT%, FT%, TOV, and total points of 1 seeds over the course of the season.
+- **NCAA_Finals_Analysis.Rmd** - Historical score differential and seed differential of Final Four and NCAA Championship games.
 
 ## Key Questions Explored
 
@@ -19,6 +21,7 @@ The goal is to explore how points are distributed among players and teams and to
 - Are there any trends or patterns in scoring across the season?
 - Is there any difference in shooting statistics based on venue?
 - Which teams are better at defending three-point shots?
+- How do regular-season shooting metrics of 1 seeds stack up against other 1 seeds in Final Four games? 
 
 ## Tools Used
 
