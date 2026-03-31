@@ -249,7 +249,7 @@ t.test(
 
 t.test(
   FT_pct ~ home_away,
-  data = ft_test_data %>% filter(Team == "Duke_FT_pct")
+  data = ft_test_data |> filter(Team == "Duke_FT_pct")
 )
 
 # no statistically significant difference in FT% for each team per venue
@@ -315,7 +315,7 @@ t.test(
 
 t.test(
   Three_pct ~ home_away,
-  data = ThreeP_test_data %>% filter(Team == "Duke_3P_pct")
+  data = ThreeP_test_data |> filter(Team == "Duke_3P_pct")
 )
 
 # no statistically significant difference in 3PT% for each team per venue

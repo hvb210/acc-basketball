@@ -1,0 +1,151 @@
+---
+title: "Power 5"
+output: html_notebook
+---
+
+```{r}
+acc_data <- read_csv("2026-2026_Power_5_Regular_Season - ACC.csv")
+sec_data <- read_csv("2026-2026_Power_5_Regular_Season - SEC.csv")
+big_ten_data <- read_csv("2026-2026_Power_5_Regular_Season - Big Ten.csv")
+big_12_data <- read_csv("2026-2026_Power_5_Regular_Season - Big 12.csv")
+big_east_data <- read_csv("2026-2026_Power_5_Regular_Season - Big East.csv")
+```
+
+```{r}
+acc_data <- acc_data |>
+  mutate(
+    avg_dreb_pg = DRB/G,
+    avg_oreb_pg = ORB/G,
+    avg_ppg = PTS/G,
+    avg_TOV_pg = TOV/G
+  )
+
+sec_data <- sec_data |>
+   mutate(
+    avg_dreb_pg = DRB/G,
+    avg_oreb_pg = ORB/G,
+    avg_ppg = PTS/G,
+    avg_TOV_pg = TOV/G
+  )
+
+big_ten_data <- big_ten_data |>
+   mutate(
+    avg_dreb_pg = DRB/G,
+    avg_oreb_pg = ORB/G,
+    avg_ppg = PTS/G,
+    avg_TOV_pg = TOV/G
+  )
+
+big_12_data <- big_12_data |>
+   mutate(
+    avg_dreb_pg = DRB/G,
+    avg_oreb_pg = ORB/G,
+    avg_ppg = PTS/G,
+    avg_TOV_pg = TOV/G
+  )
+
+big_east_data <- big_east_data |>
+ mutate(
+    avg_dreb_pg = DRB/G,
+    avg_oreb_pg = ORB/G,
+    avg_ppg = PTS/G,
+    avg_TOV_pg = TOV/G
+  )
+ 
+```
+
+```{r}
+# calculating offensive efficiency
+# using KenPom estimation for number of possessions (FGA-ORB) + TOV + (0.44*FTA)
+
+acc_data <- acc_data |>
+  mutate(
+    off_efficiency = PTS / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+sec_data <- sec_data |>
+  mutate(
+    off_efficiency = PTS / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+big_ten_data <- big_ten_data |>
+  mutate(
+    off_efficiency = PTS / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+big_12_data <- big_12_data |>
+  mutate(
+    off_efficiency = PTS / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+big_east_data <- big_east_data |>
+  mutate(
+    off_efficiency = PTS / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+```
+
+```{r}
+#calculating defensive efficiency
+
+acc_data <- acc_data |>
+  mutate(
+    def_efficiency = PTS_opp / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+sec_data <- sec_data |>
+  mutate(
+    def_efficiency = PTS_opp / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+big_ten_data <- big_ten_data |>
+  mutate(
+    def_efficiency = PTS_opp / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+big_12_data <- big_12_data |>
+  mutate(
+    def_efficiency = PTS_opp / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+
+big_east_data <- big_east_data |>
+  mutate(
+    def_efficiency = PTS_opp / ((FGA - ORB) + TOV + 0.44*FTA)
+  )
+```
+
+```{r}
+acc_data <- acc_data |>
+  mutate(
+    conference = "ACC"
+  )
+
+sec_data <- sec_data |>
+  mutate(
+    conference = "SEC"
+  )
+
+big_ten_data <- big_ten_data |>
+  mutate(
+    conference = "Big Ten"
+  )
+
+big_12_data <- big_12_data |>
+  mutate(
+    conference = "Big 12"
+  )
+
+big_east_data <- big_east_data |>
+  mutate(
+    conference = "Big East"
+  )
+```
+
+
+```{r}
+write_csv(acc_data, file = "sec_data.csv")
+write_csv(sec_data, file = "acc_data.csv")
+write_csv(big_ten_data, file = "big_ten_data.csv")
+write_csv(big_12_data, file = "big_12_data.csv")
+write_csv(big_east_data, file = "big_east_data.csv")
+```
+

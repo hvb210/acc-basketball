@@ -44,7 +44,7 @@ ggplot(acc_opp_data, aes(x = X3P.*100, y = X3PA))+
   geom_hline(yintercept = avg_3PA, linetype = "dashed") +
   geom_vline(xintercept = avg_3P_perc*100, linetype = "dashed") +
   labs(
-    x = "Oppenent Three Point % Made",
+    x = "Opponent Three Point % Made",
     y = "Opponent Three Point Attempts",
     title = "ACC Three-Point Defense Profile (2025-26)",
     caption = "Data: Stathead Basketball"
