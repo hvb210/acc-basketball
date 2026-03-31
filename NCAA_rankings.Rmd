@@ -1,0 +1,287 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+install.packages("hoopR", dependencies = TRUE)
+library(hoopR)
+```
+
+```{r}
+games <- load_mbb_team_box(seasons = 2026)
+```
+
+```{r}
+# filtering out post-season games
+# keeps pre-season and regular season games
+
+games <- games |>
+  filter(season_type != 3)
+```
+
+```{r}
+# checking for opponent team score and opponent team name
+
+names(games)
+```
+```{r}
+games <- games |>
+  select(
+    -season,
+    -game_date,
+    -game_date_time,
+    -team_id,
+    -team_uid,
+    -team_slug,
+    -team_location,
+    -team_name,
+    -team_abbreviation,
+    -team_display_name,
+    -team_color,
+    -team_alternate_color,
+    -team_logo,
+    -opponent_team_id,
+    -opponent_team_uid,
+    -opponent_team_slug,
+    -opponent_team_location,
+    -opponent_team_name,
+    -opponent_team_abbreviation,
+    -opponent_team_display_name,
+    -opponent_team_color,
+    -opponent_team_alternate_color,
+    -opponent_team_logo
+  )
+```
+
+```{r}
+# capping score margin at 15 to account for blowouts
+
+games <- games |>
+  mutate(
+    win = ifelse(team_score > opponent_team_score, 1, 0),
+    raw_margin = team_score - opponent_team_score,
+    margin = pmax(pmin(raw_margin, 15), -15)
+  )
+```
+
+```{r}
+# checking number of games with margins greater than the cap of 15
+
+games |>
+  filter(abs(margin) < abs(raw_margin))
+  
+```
+```{r}
+# using capped margins so that teams who blow out weaker opponents are not too heavily weighted
+
+team_stats <- games |>
+  group_by(team_short_display_name) |>
+  summarise(
+    games = n(),
+    win_pct = mean(win),
+    avg_margin = mean(margin),
+    avg_defense = mean(opponent_team_score),
+    avg_offense = mean(team_score)
+  )
+```
+
+```{r}
+unique(team_stats$games)
+```
+
+```{r}
+# filtering out teams who played less than 10 games
+# this removes 727-366=361 teams
+
+team_stats <- team_stats |>
+  filter(games >= 10)
+```
+
+```{r}
+# turning each team into the opponent so it can be joined with the games df
+
+team_stats_for_join <- team_stats |>
+  rename(opponent_team_short_display_name = team_short_display_name, opp_win_pct = win_pct)
+
+# creating an intermediate table with the team stats
+# each team is joined with their opponent
+
+games_sos <- games |>
+  left_join(team_stats_for_join, by = "opponent_team_short_display_name")
+
+# defining strength of schedule for each team based on the average win percentage of their opponents
+
+sos <- games_sos |>
+  group_by(team_short_display_name) |>
+  summarise(
+    sos = mean(opp_win_pct, na.rm = TRUE)
+  )
+```
+
+```{r}
+# checking that the values of sos makes sense
+
+summary(sos)
+```
+```{r}
+# reading in data for Power 5 Conference membership and end of season AP ranking
+
+power_5_conf <- read.csv("Power_5_Teams.csv")
+ap_2026_rankings <- read.csv("2026_AP_Rankings.csv")
+```
+
+```{r}
+team_stats <- team_stats |>
+  left_join(power_5_conf, by = "team_short_display_name")
+```
+
+```{r}
+team_stats <- team_stats |>
+  left_join(ap_2026_rankings, by = "team_short_display_name")
+```
+
+```{r}
+# creating binary variables for if a team is in Power 5 or was ranked at the end of the season
+# to be used in power rankings weighting
+
+team_stats <- team_stats |>
+  mutate(
+    power5 = ifelse(conference %in% c("ACC","Big Ten","Big 12","Big East","SEC"), 1, 0),
+    ranked = ifelse(!is.na(RK), 1, 0)
+  )
+```
+
+```{r}
+# defining the maximums to be used to scale each metric
+
+max_margin <- max(abs(team_stats$avg_margin), na.rm = TRUE)
+max_offense <- max(abs(team_stats$avg_offense), na.rm = TRUE)
+max_defense <- max(abs(team_stats$avg_defense), na.rm = TRUE)
+
+
+```
+
+```{r}
+# creating a power index table joining sos for each team
+# weighting win percentage, sos, and scaled average margin
+
+power_index <- team_stats |>
+  left_join(sos, by = "team_short_display_name") |>
+  mutate(
+    rating =
+      0.35 * win_pct +
+      0.25 * sos +
+      0.1 * (avg_margin / max_margin) +
+      0.05 * (avg_offense / max_offense) +
+      0.05 * (avg_defense / max_defense)+
+      0.1 * ranked +
+      0.1 * power5
+  ) |>
+  arrange(desc(rating))
+```
+
+```{r}
+power_index |>
+  summarise(across(everything(), ~sum(is.na(.))))
+```
+
+```{r}
+head(power_index, 68)
+```
+```{r}
+# joining each team and opponents power rating to the games played
+
+matchups <- games |>
+  left_join(power_index |> select(team_short_display_name, rating), by = "team_short_display_name") |>
+  rename(team_rating = rating) |>
+  left_join(power_index |> select(team_short_display_name, rating),
+            by = c("opponent_team_short_display_name" = "team_short_display_name")) |>
+  rename(opp_rating = rating)
+```
+```{r}
+# determining which teams are in matchups but don't have a power index due to playing less than 10 games
+
+anti_join(matchups, power_index, by = c("team_short_display_name" = "team_short_display_name"))
+```
+```{r}
+# removing games where a team has no rating due to playing 10 or less games
+
+matchups <- matchups |> filter(!is.na(team_rating))
+```
+
+```{r}
+matchups <- matchups |>
+  mutate(
+    rating_diff = team_rating - opp_rating
+  )
+```
+
+```{r}
+# determining which teams 
+matchups |>
+  filter(is.na(rating_diff)) |>
+  group_by(team_short_display_name) |>
+  summarise(
+    n()
+  )
+```
+```{r}
+# removing matchups where there is no rating_diff or win value because a team did not play 10 or more games
+
+matchups <- matchups |> filter(!is.na(rating_diff))
+```
+
+
+```{r}
+# building a model to predict winning odds based on rating differential
+
+model <- glm(
+  win ~ rating_diff,
+  data = matchups,
+  family = "binomial"
+)
+```
+
+```{r}
+# writing a function to predict the probability of Team A beating Team B
+# type = "response" turns log-odds into probability
+
+predict_game <- function(teamA, teamB, power_index, model) {
+  
+  ratingA <- power_index |> filter(team_short_display_name == teamA) |> pull(rating)
+  ratingB <- power_index |> filter(team_short_display_name == teamB) |> pull(rating)
+  
+  rating_diff <- ratingA - ratingB
+  
+  prob <- predict(
+    model,
+    newdata = data.frame(rating_diff = rating_diff), #converts the rating_diff value into a data frame
+    type = "response"
+  )
+  
+  return(prob)
+}
+```
+
+```{r}
+# evaluating my model
+
+preds <- predict(model, type = "response")
+
+mean((preds > 0.5) == matchups$win)
+```
+
+```{r}
+# comparing to just picking the higher ranked team every time
+
+mean((matchups$rating_diff > 0) == matchups$win)
+```
+
+
+
+
+```{r}
+predict_game("Georgia", "Saint Louis", power_index, model)
+```
+

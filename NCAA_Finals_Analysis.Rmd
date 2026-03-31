@@ -1,0 +1,159 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# pre-cleaned and standardized team names in Excel before creating csv
+
+NCAA_finals <- read.csv("~/Desktop/Basketball Analysis/acc-basketball/NCAA_Finals.csv")
+```
+
+```{r}
+# checking to see the data type of Date
+
+str(NCAA_finals)
+```
+
+```{r}
+# cleaning Date to be able to separate the year
+# convert to numeric
+
+NCAA_finals <- NCAA_finals |>
+  separate(
+    col = Date,
+    into = c("Year", "Day", "Month"),
+    sep = "-",
+    convert = TRUE
+  )
+```
+
+```{r}
+# drop day and month of game
+
+NCAA_finals <- NCAA_finals |>
+  select(-Day, -Month)
+```
+
+```{r}
+# creating separate data frames for National Championship, Final Four, and Elite Eight rounds
+
+NCAA_final_four <- NCAA_finals |>
+  filter(Round == "National Semi") |>
+  arrange(desc(Year))
+
+NCAA_champs <- NCAA_finals |>
+  filter(Round == "National Final") |>
+  arrange(desc(Year))
+
+```
+
+```{r}
+NCAA_final_four <- NCAA_final_four |>
+  # create a game key that looks at the team and opponent and puts the in alphabetical order
+  mutate(game_key = map2_chr(Team, Opp, ~paste(sort(c(.x, .y)), collapse = '_'))) |>
+  # each game key and year should be unique to one game
+  group_by(game_key, Year) |>
+  # take the first one to remove duplicates (UNC vs Duke 2022 is the same as Duke vs UNC 2022)
+  slice(1) |>
+  ungroup() |>
+  arrange(desc(Year))
+
+NCAA_champs <- NCAA_champs |>
+  mutate(game_key = map2_chr(Team, Opp, ~paste(sort(c(.x, .y)), collapse = '_'))) |>
+  group_by(game_key, Year) |>
+  slice(1) |>
+  ungroup() |>
+  arrange(desc(Year))
+
+```
+
+```{r}
+NCAA_ff_score_diff <- NCAA_final_four |>
+  mutate(score_diff = abs(PTS_team - PTS_opp),
+         seed_diff = abs(Seed - Opp_Seed),
+         seed_diff_cat = case_when(
+          is.na(seed_diff) ~ NA_character_,
+          seed_diff == 0 ~ "Even",
+          seed_diff <= 2 ~ "Small",
+          seed_diff <= 4 ~ "Medium",
+          TRUE ~ "Large"
+          )
+        )
+
+NCAA_champs_score_diff <- NCAA_champs |>
+  mutate(score_diff = abs(PTS_team - PTS_opp),
+         seed_diff = abs(Seed - Opp_Seed),
+         seed_diff_cat = case_when(
+          is.na(seed_diff) ~ NA_character_,
+          seed_diff == 0 ~ "Even",
+          seed_diff <= 2 ~ "Small",
+          seed_diff <= 4 ~ "Medium",
+          TRUE ~ "Large"
+          )
+        )
+
+```
+
+```{r}
+mean_ff_score_diff <- mean(NCAA_ff_score_diff$score_diff)
+mean_champs_score_diff <- mean(NCAA_champs_score_diff$score_diff)
+```
+
+```{r}
+NCAA_ff_score_diff <- NCAA_ff_score_diff |>
+  mutate(
+    one_v_one = (Seed == 1 & Opp_Seed == 1)
+  )
+
+NCAA_champs_score_diff <- NCAA_champs_score_diff |>
+  mutate(
+    one_v_one = (Seed == 1 & Opp_Seed == 1)
+  )
+
+```
+
+```{r}
+NCAA_ff_score_diff |>
+  ggplot(aes(x = Year, y = score_diff, color = seed_diff_cat)) +
+  geom_point() +
+  scale_color_manual(values = c(
+    "Even" = "black",
+    "Small" = "blue",
+    "Medium" = "orange",
+    "Large" = "red"
+  )) +
+  geom_hline(yintercept = mean_ff_score_diff, linetype = "dashed") +
+  scale_x_continuous(breaks = seq(min(NCAA_ff_score_diff$Year), max(NCAA_ff_score_diff$Year), by = 5)) +
+  labs(
+    x = "Tournament Year",
+    y = "Score Differential",
+    title = "Final Four: Score Differentials",
+    caption = "Data: Stathead",
+    color = "Seed Differential"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+
+NCAA_champs_score_diff |>
+  ggplot(aes(x = Year, y = score_diff, color = seed_diff_cat)) +
+  geom_point() +
+  scale_color_manual(values = c(
+    "Even" = "black",
+    "Small" = "blue",
+    "Medium" = "orange",
+    "Large" = "red"
+  )) +
+  geom_hline(yintercept = mean_champs_score_diff, linetype = "dashed") +
+  scale_x_continuous(breaks = seq(min(NCAA_champs_score_diff$Year), max(NCAA_champs_score_diff$Year), by = 5)) +
+  labs(
+    x = "Tournament Year",
+    y = "Score Differential",
+    title = "Championship: Score Differentials",
+    caption = "Data: Stathead",
+    color = "Seed Differential"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+```
+
